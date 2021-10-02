@@ -18,7 +18,6 @@
   - Users can click on a repository name, which will route them to a new page.
 
   - The second HTML page will display a list of all open issues for that repository.
-  - 
  
  ## Title: Search for featured repos
 
