@@ -1,56 +1,125 @@
 var userFormEl = document.querySelector("#user-form");
+var languageButtonsEl = document.querySelector("#language-buttons");
 var nameInputEl = document.querySelector("#username");
+var repoContainerEl = document.querySelector("#repos-container");
+var repoSearchTerm = document.querySelector("#repo-search-term");
+
 var formSubmitHandler = function(event) {
-  event.preventDefault();// get value from input element
+  // prevent page from refreshing
+  event.preventDefault();
+
+  // get value from input element
   var username = nameInputEl.value.trim();
-  
+
   if (username) {
     getUserRepos(username);
+
+    // clear old content
+    repoContainerEl.textContent = "";
     nameInputEl.value = "";
   } else {
     alert("Please enter a GitHub username");
   }
 };
 
-var getUserRepos = function(user) {
-  var apiUrl = "https://api.github.com/users/" + user + "/repos";
-    $.getJSON(apiUrl)
-    .done(function(data) {
-      if(jQuery.isEmptyObject(data) === false){
-      var container = $("#repos");
-      container.html("");
-      var reposGroup = $("<ul>").addClass("list-group");
-      container.append(reposGroup);
-      var reposItem = "";
-      var repoItemDetails = "";
-      reposItemStatus = "";
-      reposStatusIcon = "";
-        for(var i = 0; i< data.length; i++){
-          repoItemDetails = $("<div>").append(user + "/" + data[i].name);
-          reposItemStatus = $("<div>").addClass("status-"+i);
-          reposItem = $("<li>").addClass("list-group-item m-2 bg-secondary rounded text-white font-weight-bold d-flex justify-content-between item-" + i);
-          $(".list-group").append(reposItem);
-          $(".item-" + i).append(repoItemDetails);
-          $(".item-" + i).append(reposItemStatus);
-          reposStatusIcon = $("<i>").addClass("fas fa-check-square status-icon icon-success");
-          $(".status-"+i).append(reposStatusIcon);
-          if (data[i].open_issues_count > 0) {
-            $(".status-"+i).html("");
-            reposStatusIcon = $("<i>").addClass("fas fa-times status-icon icon-danger");
-            $(".status-"+i).append(reposStatusIcon);
-            $(".status-"+i).append(data[i].open_issues_count + " issue(s)");
-          }
-        }
-      } 
+var buttonClickHandler = function(event) {
+  // get the language attribute from the clicked element
+  var language = event.target.getAttribute("data-language");
 
-      if (data.length === 0) {
-        alert("No repositories found.");
-        return;
+  if (language) {
+    getFeaturedRepos(language);
+
+    // clear old content
+    repoContainerEl.textContent = "";
+  }
+};
+
+var getUserRepos = function(user) {
+  // format the github api url
+  var apiUrl = "https://api.github.com/users/" + user + "/repos";
+
+  // make a get request to url
+  fetch(apiUrl)
+    .then(function(response) {
+      // request was successful
+      if (response.ok) {
+        console.log(response);
+        response.json().then(function(data) {
+          console.log(data);
+          displayRepos(data, user);
+        });
+      } else {
+        alert("Error: " + response.statusText);
       }
     })
-    .fail(function( error ) {
-      alert("user not found");
+    .catch(function(error) {
+      alert("Unable to connect to GitHub");
+    });
+};
+
+var getFeaturedRepos = function(language) {
+  // format the github api url
+  var apiUrl = "https://api.github.com/search/repositories?q=" + language + "+is:featured&sort=help-wanted-issues";
+
+  // make a get request to url
+  fetch(apiUrl).then(function(response) {
+    // request was successful
+    if (response.ok) {
+      response.json().then(function(data) {
+        displayRepos(data.items, language);
+      });
+    } else {
+      alert("Error: " + response.statusText);
+    }
   });
 };
-  
+
+var displayRepos = function(repos, searchTerm) {
+  // check if api returned any repos
+  if (repos.length === 0) {
+    repoContainerEl.textContent = "No repositories found.";
+    return;
+  }
+
+  repoSearchTerm.textContent = searchTerm;
+
+  // loop over repos
+  for (var i = 0; i < repos.length; i++) {
+    // format repo name
+    var repoName = repos[i].owner.login + "/" + repos[i].name;
+
+    // create a link for each repo
+    var repoEl = document.createElement("a");
+    repoEl.classList = "list-item flex-row justify-space-between align-center";
+    repoEl.setAttribute("href", "./single-repo.html?repo=" + repoName);
+
+    // create a span element to hold repository name
+    var titleEl = document.createElement("span");
+    titleEl.textContent = repoName;
+
+    // append to container
+    repoEl.appendChild(titleEl);
+
+    // create a status element
+    var statusEl = document.createElement("span");
+    statusEl.classList = "flex-row align-center";
+
+    // check if current repo has issues or not
+    if (repos[i].open_issues_count > 0) {
+      statusEl.innerHTML =
+        "<i class='fas fa-times status-icon icon-danger'></i>" + repos[i].open_issues_count + " issue(s)";
+    } else {
+      statusEl.innerHTML = "<i class='fas fa-check-square status-icon icon-success'></i>";
+    }
+
+    // append to container
+    repoEl.appendChild(statusEl);
+
+    // append container to the dom
+    repoContainerEl.appendChild(repoEl);
+  }
+};
+
+// add event listeners to form and button container
 userFormEl.addEventListener("submit", formSubmitHandler);
+languageButtonsEl.addEventListener("click", buttonClickHandler);
