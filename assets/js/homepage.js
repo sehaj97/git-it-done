@@ -42,6 +42,11 @@ var getUserRepos = function(user) {
           }
         }
       } 
+
+      if (data.length === 0) {
+        alert("No repositories found.");
+        return;
+      }
     })
     .fail(function( error ) {
       alert("user not found");
